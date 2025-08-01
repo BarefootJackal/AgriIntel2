@@ -1,0 +1,1477 @@
+
+// Main App component
+function App() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [farmName, setFarmName] = useState('');
+  const [farmSize, setFarmSize] = useState(''); // State to store farm size
+  const [farmLocation, setFarmLocation] = useState(''); // State to store farm location
+  const [isFarmRegistered, setIsFarmRegistered] = useState(false);
+  const [registrationStep, setRegistrationStep] = useState(1); // New state for multi-step registration
+  const [farmingTypes, setFarmingTypes] = useState([]); // Changed to array for multi-select
+  const [selectedFarmingInfo, setSelectedFarmingInfo] = useState({}); // Changed to object for multi-select per type
+
+  const [isPartitioned, setIsPartitioned] = useState(false); // New state for partitioning
+  const [numPartitions, setNumPartitions] = useState(0); // Number of partitions
+  const [partitionDetails, setPartitionDetails] = useState([]); // Array to store partition details
+
+  // State for LLM-powered features
+  const [cropRecPrompt, setCropRecPrompt] = useState('');
+  const [cropRecResponse, setCropRecResponse] = useState('');
+  const [isCropRecLoading, setIsCropRecLoading] = useState(false);
+
+  const [chatInput, setChatInput] = useState('');
+  const [chatHistory, setChatHistory] = useState([]);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+
+  const [soilSymptoms, setSoilSymptoms] = useState('');
+  const [soilAdvice, setSoilAdvice] = useState('');
+  const [isSoilAdviceLoading, setIsSoilAdviceLoading] = useState(false);
+
+  const [farmReportInput, setFarmReportInput] = useState('');
+  const [farmReportSummary, setFarmReportSummary] = useState('');
+  const [isFarmReportSummarizing, setIsFarmReportSummarizing] = useState(false);
+
+  const [yieldCropType, setYieldCropType] = useState('');
+  const [yieldPlantingDate, setYieldPlantingDate] = useState('');
+  const [yieldExpectedRainfall, setYieldExpectedRainfall] = useState('');
+  const [yieldFertilizerUse, setYieldFertilizerUse] = useState('');
+  const [yieldProjectionResult, setYieldProjectionResult] = useState('');
+  const [isYieldProjectionLoading, setIsYieldProjectionLoading] = useState(false);
+
+  const [profitProjectedYield, setProfitProjectedYield] = useState('');
+  const [profitMarketPrice, setProfitMarketPrice] = useState('');
+  const [profitResult, setProfitResult] = useState('');
+
+  // New states for Proposed Farming Advice
+  const [proposedFarmingAdvice, setProposedFarmingAdvice] = useState('');
+  const [isProposedAdviceLoading, setIsProposedAdviceLoading] = useState(false);
+
+  // Canvas ref for farm map
+  const canvasRef = useRef(null);
+
+
+  // Mock data for demonstration purposes
+  const mockWeatherData = {
+    location: 'Nairobi, Kenya',
+    temperature: '25°C',
+    condition: 'Partly Cloudy',
+    humidity: '60%',
+    wind: '10 km/h',
+    forecast: [
+      { day: 'Today', temp: '26°C', condition: 'Sunny' },
+      { day: 'Tomorrow', temp: '24°C', condition: 'Rainy' },
+      { day: 'Day 3', temp: '27°C', condition: 'Cloudy' },
+    ],
+  };
+
+  const mockCropHealthData = [
+    {
+      crop: 'Maize',
+      status: 'Healthy',
+      lastScanned: '2025-07-29',
+      notes: 'Good growth, no visible stress.',
+      costIncurred: 'Ksh 15,000',
+      expectedFurtherCost: 'Ksh 5,000',
+      cropDuration: '120 days',
+      currentPhase: 'Flowering'
+    },
+    {
+      crop: 'Beans',
+      status: 'Mild Stress',
+      lastScanned: '2025-07-28',
+      notes: 'Slight yellowing, check soil moisture.',
+      costIncurred: 'Ksh 8,000',
+      expectedFurtherCost: 'Ksh 3,000',
+      cropDuration: '90 days',
+      currentPhase: 'Pod Formation'
+    },
+    {
+      crop: 'Tomatoes',
+      status: 'Healthy',
+      lastScanned: '2025-07-29',
+      notes: 'Flowering well.',
+      costIncurred: 'Ksh 22,000',
+      expectedFurtherCost: 'Ksh 7,000',
+      cropDuration: '180 days',
+      currentPhase: 'Fruiting'
+    },
+  ];
+
+  const mockMarketTrends = [
+    { commodity: 'Maize (1kg)', price: 'Ksh 45', trend: 'stable' },
+    { commodity: 'Beans (1kg)', price: 'Ksh 120', trend: 'up' },
+    { commodity: 'Tomatoes (1kg)', price: 'Ksh 80', trend: 'down' },
+  ];
+
+  const mockSatelliteData = [
+    {
+      date: '2025-07-25',
+      soilType: 'Loamy',
+      soilComposition: 'Clay: 30%, Silt: 40%, Sand: 30%',
+      moistureLevel: '65%',
+      pH: '6.5',
+      nitrogen: 'Adequate',
+      phosphorus: 'Low',
+      potassium: 'Medium',
+      vegetationIndex: 'NDVI: 0.78 (Healthy)'
+    },
+    {
+      date: '2025-07-18',
+      soilType: 'Loamy',
+      soilComposition: 'Clay: 30%, Silt: 40%, Sand: 30%',
+      moistureLevel: '58%',
+      pH: '6.4',
+      nitrogen: 'Adequate',
+      phosphorus: 'Low',
+      potassium: 'Medium',
+      vegetationIndex: 'NDVI: 0.75 (Healthy)'
+    },
+    {
+      date: '2025-07-11',
+      soilType: 'Loamy',
+      soilComposition: 'Clay: 30%, Silt: 40%, Sand: 30%',
+      moistureLevel: '70%',
+      pH: '6.5',
+      nitrogen: 'Adequate',
+      phosphorus: 'Low',
+      potassium: 'Medium',
+      vegetationIndex: 'NDVI: 0.70 (Healthy)'
+    },
+  ];
+
+  const mockFarmAnalyticsData = [
+    {
+      metric: 'NDVI Trend (Last 30 days)',
+      value: 'Increasing (Good Crop Vigor)',
+      details: 'From 0.65 to 0.78, indicating healthy growth.',
+      action: 'Continue monitoring.'
+    },
+    {
+      metric: 'Soil Moisture Anomaly',
+      value: 'Slightly Below Average',
+      details: 'Compared to historical data, current moisture is 5% lower.',
+      action: 'Consider light irrigation in specific zones.'
+    },
+    {
+      metric: 'Pest Risk Index',
+      value: 'Low',
+      details: 'Based on temperature and humidity, risk of common pests is low.',
+      action: 'Routine scouting recommended.'
+    },
+    {
+      metric: 'Nutrient Stress Scan',
+      value: 'No Significant Stress Detected',
+      details: 'Spectral analysis shows no widespread nutrient deficiencies.',
+      action: 'Perform targeted soil tests if localized issues appear.'
+    }
+  ];
+
+  const allFarmingTypes = [
+    'Subsistence farming', 'Commercial farming', 'Mixed farming', 'Dairy farming',
+    'Horticultural farming', 'Floriculture', 'Pastoralism', 'Nomadic pastoralism',
+    'Poultry farming', 'Fish farming (Aquaculture)', 'Apiculture (Beekeeping)',
+    'Agroforestry', 'Organic farming', 'Irrigation farming'
+  ];
+
+  const farmingTypeInfo = {
+    'Subsistence farming': ['Rain-fed crops', 'Small livestock', 'Mixed crops and livestock'],
+    'Commercial farming': ['Large-scale crop production', 'Export-oriented crops', 'Agribusiness'],
+    'Mixed farming': ['Crop and livestock integration', 'Diversified production'],
+    'Dairy farming': ['Cattle breeds', 'Milk production scale', 'Processing facilities'],
+    'Horticultural farming': ['Vegetable production', 'Fruit orchards', 'Greenhouse farming'],
+    'Floriculture': ['Cut flowers', 'Ornamental plants', 'Seedling production'],
+    'Pastoralism': ['Cattle herding', 'Goat/Sheep herding', 'Traditional grazing'],
+    'Nomadic pastoralism': ['Seasonal migration', 'Water source dependent'],
+    'Poultry farming': ['Broilers', 'Layers', 'Indigenous chicken'],
+    'Fish farming (Aquaculture)': ['Tilapia', 'Catfish', 'Pond farming', 'Cage farming'],
+    'Apiculture (Beekeeping)': ['Honey production', 'Pollination services', 'Bee products'],
+    'Agroforestry': ['Trees and crops integration', 'Silvopasture', 'Woodlot management'],
+    'Organic farming': ['Certified organic', 'Transitional organic', 'Composting practices'],
+    'Irrigation farming': ['Drip irrigation', 'Sprinkler irrigation', 'Flood irrigation', 'Water source']
+  };
+
+  // Function to get time-based greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      return 'Good morning';
+    } else if (hour < 18) {
+      return 'Good afternoon';
+    } else {
+      return 'Good evening';
+    }
+  };
+
+  // Handle farm registration - Step 1
+  const handleFarmRegistrationStep1 = (e) => {
+    e.preventDefault();
+    if (farmName.trim() && farmSize.trim() && farmLocation.trim()) {
+      setRegistrationStep(2); // Move to step 2
+    }
+  };
+
+  // Handle farming type selection (multi-select)
+  const handleFarmingTypeChange = (type) => {
+    setFarmingTypes(prev =>
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    );
+    setSelectedFarmingInfo(prev => {
+      const newInfo = { ...prev };
+      if (!prev[type]) { // Initialize if new type is added
+        newInfo[type] = [];
+      } else if (!farmingTypes.includes(type)) { // Clear if type is deselected
+        delete newInfo[type];
+      }
+      return newInfo;
+    });
+  };
+
+  // Handle detailed farming info selection for dropdowns
+  const handleDetailedFarmingInfoChange = (type, event) => {
+    const selectedOptions = Array.from(event.target.selectedOptions).map(option => option.value);
+    setSelectedFarmingInfo(prev => ({
+      ...prev,
+      [type]: selectedOptions
+    }));
+  };
+
+  // Handle farm partitioning details change
+  const handlePartitionDetailChange = (index, field, value) => {
+    const newPartitionDetails = [...partitionDetails];
+    newPartitionDetails[index] = { ...newPartitionDetails[index], [field]: value };
+    setPartitionDetails(newPartitionDetails);
+  };
+
+  // Function to move to next registration step (after farming types)
+  const handleFarmingTypeNext = () => {
+    setRegistrationStep(3); // Move to partitioning step
+  };
+
+  // Function to complete registration
+  const handleCompleteRegistration = () => {
+    setIsFarmRegistered(true);
+    setRegistrationStep(1); // Reset for next time
+    setActiveTab('dashboard');
+  };
+
+  // LLM Call for Proposed Farming Advice
+  const handleGenerateProposedFarmingAdvice = async () => {
+    setIsProposedAdviceLoading(true);
+    setProposedFarmingAdvice('');
+
+    const currentFarmingTypeStr = farmingTypes.join(', ') + (Object.values(selectedFarmingInfo).flat().length > 0 ? ` (${Object.values(selectedFarmingInfo).flat().join(', ')})` : '');
+    const soilData = mockSatelliteData[0]; // Using the most recent mock satellite data for context
+    const weatherData = mockWeatherData; // Using mock weather data for context
+    const marketData = mockMarketTrends; // Using mock market trends for context
+
+    const prompt = `Given the farm details:
+    Farm Name: ${farmName}
+    Location: ${farmLocation}
+    Acreage: ${farmSize} acres
+    Current Farming Type(s): ${currentFarmingTypeStr || 'Not specified'}
+    
+    Recent Satellite Data:
+    Soil Type: ${soilData.soilType}
+    Soil Composition: ${soilData.soilComposition}
+    Moisture Level: ${soilData.moistureLevel}
+    pH: ${soilData.pH}
+    Nitrogen: ${soilData.nitrogen}
+    Phosphorus: ${soilData.phosphorus}
+    Potassium: ${soilData.potassium}
+    
+    Current Weather Conditions in ${weatherData.location}:
+    Temperature: ${weatherData.temperature}
+    Condition: ${weatherData.condition}
+    Humidity: ${weatherData.humidity}
+    Wind: ${weatherData.wind}
+    Forecast: ${weatherData.forecast.map(f => `${f.day}: ${f.temp}, ${f.condition}`).join('; ')}
+
+    Current Market Trends:
+    ${marketData.map(item => `${item.commodity}: ${item.price} (${item.trend})`).join('; ')}
+    
+    Considering these prevailing conditions (satellite data, market conditions, weather), propose a suitable alternative or optimized farming type(s) for this area.
+    Then, provide a brief comparison of the estimated initial costs, ongoing operational costs, and potential returns for the PROPOSED farming type(s) versus the CURRENT farming type(s).
+    Also, suggest specific crops or animals for the proposed farming type(s).`;
+
+    let chatHistoryForLLM = [{ role: "user", parts: [{ text: prompt }] }];
+
+    const payload = { contents: chatHistoryForLLM };
+    const apiKey = ""; // Canvas will provide this at runtime
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+
+      if (result.candidates && result.candidates.length > 0 &&
+        result.candidates[0].content && result.candidates[0].content.parts &&
+        result.candidates[0].content.parts.length > 0) {
+        const text = result.candidates[0].content.parts[0].text;
+        setProposedFarmingAdvice(text);
+      } else {
+        setProposedFarmingAdvice("Could not generate proposed farming advice. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error calling Gemini API for proposed farming advice:", error);
+      setProposedFarmingAdvice("An error occurred while fetching proposed farming advice.");
+    } finally {
+      setIsProposedAdviceLoading(false);
+    }
+  };
+
+
+  // Function to call Gemini API for crop recommendation
+  const handleGenerateCropRecommendation = async () => {
+    if (!cropRecPrompt.trim()) return;
+
+    setIsCropRecLoading(true);
+    setCropRecResponse('');
+
+    let chatHistoryForLLM = [];
+    chatHistoryForLLM.push({ role: "user", parts: [{ text: `Suggest suitable crops for a farm with the following characteristics: ${cropRecPrompt}. Provide a concise list with brief reasons.` }] });
+
+    const payload = { contents: chatHistoryForLLM };
+    const apiKey = ""; // Canvas will provide this at runtime
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+
+      if (result.candidates && result.candidates.length > 0 &&
+        result.candidates[0].content && result.candidates[0].content.parts &&
+        result.candidates[0].content.parts.length > 0) {
+        const text = result.candidates[0].content.parts[0].text;
+        setCropRecResponse(text);
+      } else {
+        setCropRecResponse("Could not generate recommendations. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error calling Gemini API for crop recommendation:", error);
+      setCropRecResponse("An error occurred while fetching recommendations.");
+    } finally {
+      setIsCropRecLoading(false);
+    }
+  };
+
+  // Function to call Gemini API for chatbot
+  const handleChatSubmit = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userMessage = { role: "user", text: chatInput };
+    setChatHistory(prev => [...prev, userMessage]);
+    setChatInput('');
+    setIsChatLoading(true);
+
+    let currentChatHistory = [...chatHistory, userMessage];
+    const chatHistoryForLLM = currentChatHistory.map(msg => ({
+      role: msg.role,
+      parts: [{ text: msg.text }]
+    }));
+
+    const payload = { contents: chatHistoryForLLM };
+    const apiKey = "";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+
+      if (result.candidates && result.candidates.length > 0 &&
+        result.candidates[0].content && result.candidates[0].content.parts &&
+        result.candidates[0].content.parts.length > 0) {
+        const botResponse = { role: "model", text: result.candidates[0].content.parts[0].text };
+        setChatHistory(prev => [...prev, botResponse]);
+      } else {
+        setChatHistory(prev => [...prev, { role: "model", text: "I'm having trouble understanding. Can you rephrase?" }]);
+      }
+    } catch (error) {
+      console.error("Error calling Gemini API for chatbot:", error);
+      setChatHistory(prev => [...prev, { role: "model", text: "Sorry, I couldn't connect to the advisor. Please try again later." }]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
+  // Function to call Gemini API for Soil Nutrient Deficiency Advisor
+  const handleGetSoilAdvice = async () => {
+    if (!soilSymptoms.trim()) return;
+
+    setIsSoilAdviceLoading(true);
+    setSoilAdvice('');
+
+    let chatHistoryForLLM = [];
+    chatHistoryForLLM.push({ role: "user", parts: [{ text: `Based on the following crop symptoms, suggest potential soil nutrient deficiencies and common remedies: "${soilSymptoms}". Provide a concise list.` }] });
+
+    const payload = { contents: chatHistoryForLLM };
+    const apiKey = "";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+
+      if (result.candidates && result.candidates.length > 0 &&
+        result.candidates[0].content && result.candidates[0].content.parts &&
+        result.candidates[0].content.parts.length > 0) {
+        const text = result.candidates[0].content.parts[0].text;
+        setSoilAdvice(text);
+      } else {
+        setSoilAdvice("Could not generate advice. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error calling Gemini API for soil advice:", error);
+      setSoilAdvice("An error occurred while fetching soil advice.");
+    } finally {
+      setIsSoilAdviceLoading(false);
+    }
+  };
+
+  // Function to call Gemini API for Farm Report Summarizer
+  const handleSummarizeFarmReport = async () => {
+    if (!farmReportInput.trim()) return;
+
+    setIsFarmReportSummarizing(true);
+    setFarmReportSummary('');
+
+    let chatHistoryForLLM = [];
+    chatHistoryForLLM.push({ role: "user", parts: [{ text: `Summarize the following farm report and extract key actionable insights: "${farmReportInput}"` }] });
+
+    const payload = { contents: chatHistoryForLLM };
+    const apiKey = "";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+
+      if (result.candidates && result.candidates.length > 0 &&
+        result.candidates[0].content && result.candidates[0].content.parts &&
+        result.candidates[0].content.parts.length > 0) {
+        const text = result.candidates[0].content.parts[0].text;
+        setFarmReportSummary(text);
+      } else {
+        setFarmReportSummary("Could not summarize the report. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error calling Gemini API for report summarization:", error);
+      setFarmReportSummary("An error occurred while summarizing the report.");
+    } finally {
+      setIsFarmReportSummarizing(false);
+    }
+  };
+
+  // Function to handle Yield Projection
+  const handleGenerateYieldProjection = async () => {
+    if (!yieldCropType.trim() || !yieldPlantingDate.trim() || !yieldExpectedRainfall.trim() || !yieldFertilizerUse.trim()) {
+      setYieldProjectionResult("Please fill in all fields for yield projection.");
+      return;
+    }
+
+    setIsYieldProjectionLoading(true);
+    setYieldProjectionResult('');
+
+    const prompt = `Given the following farm conditions:
+    Crop Type: ${yieldCropType}
+    Planting Date: ${yieldPlantingDate}
+    Expected Rainfall: ${yieldExpectedRainfall}
+    Fertilizer Use: ${yieldFertilizerUse}
+    
+    Provide a realistic yield projection (e.g., in bags/acre or tons/hectare) and a brief explanation of factors influencing it.`;
+
+    let chatHistoryForLLM = [];
+    chatHistoryForLLM.push({ role: "user", parts: [{ text: prompt }] });
+
+    const payload = { contents: chatHistoryForLLM };
+    const apiKey = "";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+
+      if (result.candidates && result.candidates.length > 0 &&
+        result.candidates[0].content && result.candidates[0].content.parts &&
+        result.candidates[0].content.parts.length > 0) {
+        const text = result.candidates[0].content.parts[0].text;
+        setYieldProjectionResult(text);
+      } else {
+        setYieldProjectionResult("Could not generate yield projection. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error calling Gemini API for yield projection:", error);
+      setYieldProjectionResult("An error occurred while fetching yield projection.");
+    } finally {
+      setIsYieldProjectionLoading(false);
+    }
+  };
+
+  // Function to handle Profitability Calculation
+  const handleCalculateProfitability = () => {
+    const yieldValue = parseFloat(profitProjectedYield);
+    const priceValue = parseFloat(profitMarketPrice);
+    const incurredCost = mockCropHealthData[0] ? parseFloat(mockCropHealthData[0].costIncurred.replace('Ksh ', '').replace(',', '')) : 0;
+    const furtherCost = mockCropHealthData[0] ? parseFloat(mockCropHealthData[0].expectedFurtherCost.replace('Ksh ', '').replace(',', '')) : 0;
+
+    if (isNaN(yieldValue) || isNaN(priceValue) || yieldValue <= 0 || priceValue <= 0) {
+      setProfitResult("Please enter valid positive numbers for projected yield and market price.");
+      return;
+    }
+
+    const totalRevenue = yieldValue * priceValue;
+    const totalCost = incurredCost + furtherCost;
+    const netProfit = totalRevenue - totalCost;
+
+    setProfitResult(`Estimated Total Revenue: Ksh ${totalRevenue.toLocaleString()}
+Estimated Total Cost: Ksh ${totalCost.toLocaleString()}
+Estimated Net Profit: Ksh ${netProfit.toLocaleString()}`);
+  };
+
+  // Function to draw the farm map on canvas
+  const drawFarmMap = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const container = canvas.parentElement;
+
+    // Set canvas dimensions to match container
+    canvas.width = container.clientWidth;
+    canvas.height = Math.min(container.clientHeight, 500); // Max height for better viewing
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+
+    // Basic farm boundary (rectangle for simplicity)
+    const farmWidth = canvas.width * 0.8;
+    const farmHeight = canvas.height * 0.7;
+    const farmX = (canvas.width - farmWidth) / 2;
+    const farmY = (canvas.height - farmHeight) / 2;
+
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(farmX, farmY, farmWidth, farmHeight);
+
+    ctx.font = '16px Inter';
+    ctx.fillStyle = '#333';
+    ctx.textAlign = 'center';
+    ctx.fillText(farmName || 'Your Farm', canvas.width / 2, farmY - 10);
+
+    // Zoning based on mock data
+    // For demonstration, we'll divide the farm into zones and apply colors
+    // In a real application, this would be based on actual georeferenced satellite data
+    const zones = [];
+    if (isPartitioned && partitionDetails.length > 0) {
+      // If partitioned, use partition details for zones
+      const partitionAreaHeight = farmHeight / partitionDetails.length;
+      partitionDetails.forEach((p, index) => {
+        const y = farmY + index * partitionAreaHeight;
+        zones.push({
+          x: farmX,
+          y: y,
+          width: farmWidth,
+          height: partitionAreaHeight,
+          label: p.name || `Partition ${index + 1}`,
+          content: p.content,
+          soilType: mockSatelliteData[index % mockSatelliteData.length]?.soilType, // Cycle through mock data
+          vegetationIndex: mockSatelliteData[index % mockSatelliteData.length]?.vegetationIndex
+        });
+      });
+    } else {
+      // If not partitioned, create a few default zones based on overall farm
+      // For simplicity, let's create 3 horizontal zones
+      const zoneHeight = farmHeight / 3;
+      zones.push({
+        x: farmX, y: farmY, width: farmWidth, height: zoneHeight,
+        label: 'Zone A', content: 'Maize Field',
+        soilType: mockSatelliteData[0]?.soilType,
+        vegetationIndex: mockSatelliteData[0]?.vegetationIndex
+      });
+      zones.push({
+        x: farmX, y: farmY + zoneHeight, width: farmWidth, height: zoneHeight,
+        label: 'Zone B', content: 'Beans Field',
+        soilType: mockSatelliteData[1]?.soilType,
+        vegetationIndex: mockSatelliteData[1]?.vegetationIndex
+      });
+      zones.push({
+        x: farmX, y: farmY + 2 * zoneHeight, width: farmWidth, height: zoneHeight,
+        label: 'Zone C', content: 'Tomato Field',
+        soilType: mockSatelliteData[2]?.soilType,
+        vegetationIndex: mockSatelliteData[2]?.vegetationIndex
+      });
+    }
+
+    zones.forEach(zone => {
+      // Determine fill color based on soil type or vegetation index
+      let fillColor = '#f0f0f0'; // Default light gray
+      let textColor = '#333';
+
+      if (zone.soilType === 'Loamy') {
+        fillColor = '#D4E6C8'; // Light green for loamy
+      } else if (zone.soilType === 'Sandy') {
+        fillColor = '#F5DEB3'; // Light brown for sandy
+      } else if (zone.soilType === 'Clay') {
+        fillColor = '#B0C4DE'; // Light blue for clay
+      }
+
+      // Overlay color based on vegetation index (crop health)
+      const ndviValue = parseFloat(zone.vegetationIndex?.split(':')[1]?.trim());
+      if (!isNaN(ndviValue)) {
+        if (ndviValue >= 0.7) {
+          fillColor = '#6BBF59'; // Healthy green
+        } else if (ndviValue >= 0.5) {
+          fillColor = '#ADD8E6'; // Moderate blue
+        } else {
+          fillColor = '#FFD700'; // Yellow for low vigor/stress
+        }
+      }
+
+      ctx.fillStyle = fillColor;
+      ctx.fillRect(zone.x, zone.y, zone.width, zone.height);
+      ctx.strokeStyle = '#999';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(zone.x, zone.y, zone.width, zone.height);
+
+      ctx.fillStyle = textColor;
+      ctx.font = '14px Inter';
+      ctx.textAlign = 'center';
+      ctx.fillText(zone.label, zone.x + zone.width / 2, zone.y + zone.height / 2 - 10);
+      ctx.font = '12px Inter';
+      ctx.fillText(zone.content, zone.x + zone.width / 2, zone.y + zone.height / 2 + 10);
+      ctx.fillText(`NDVI: ${zone.vegetationIndex?.split(':')[1]?.trim() || 'N/A'}`, zone.x + zone.width / 2, zone.y + zone.height / 2 + 30);
+    });
+
+    // Add a legend
+    const legendX = farmX + farmWidth + 20;
+    let legendY = farmY;
+    ctx.textAlign = 'left';
+    ctx.font = '16px Inter';
+    ctx.fillStyle = '#333';
+    ctx.fillText('Legend:', legendX, legendY);
+    legendY += 25;
+
+    const addLegendItem = (color, text) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(legendX, legendY, 20, 20);
+      ctx.strokeStyle = '#333';
+      ctx.strokeRect(legendX, legendY, 20, 20);
+      ctx.fillStyle = '#333';
+      ctx.font = '14px Inter';
+      ctx.fillText(text, legendX + 25, legendY + 15);
+      legendY += 30;
+    };
+
+    addLegendItem('#6BBF59', 'Healthy Crop (High NDVI)');
+    addLegendItem('#ADD8E6', 'Moderate Crop Vigor (Medium NDVI)');
+    addLegendItem('#FFD700', 'Low Crop Vigor / Stress (Low NDVI)');
+    addLegendItem('#D4E6C8', 'Loamy Soil (Example)');
+    addLegendItem('#F5DEB3', 'Sandy Soil (Example)');
+    addLegendItem('#B0C4DE', 'Clay Soil (Example)');
+  };
+
+  // Effect to redraw map when activeTab changes to 'map' or farm data changes
+  useEffect(() => {
+    if (activeTab === 'map' && isFarmRegistered) {
+      drawFarmMap();
+      window.addEventListener('resize', drawFarmMap); // Redraw on resize
+      return () => window.removeEventListener('resize', drawFarmMap);
+    }
+  }, [activeTab, isFarmRegistered, farmName, farmSize, isPartitioned, numPartitions, partitionDetails, mockSatelliteData]);
+
+
+  // Render content based on active tab
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return (
+          <div className="relative p-6 bg-white rounded-lg shadow-md overflow-hidden">
+            {/* Video Background */}
+            <video
+              autoPlay
+              loop
+              muted
+              className="absolute inset-0 w-full h-full object-cover z-0 opacity-20" // Reduced opacity for readability
+              src="https://assets.mixkit.co/videos/preview/mixkit-drone-flying-over-a-field-of-crops-1776-large.mp4" // Placeholder video
+              onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/1200x800/E0F2F1/004D40?text=Farm+Dashboard+Background"; }} // Fallback image
+            >
+              Your browser does not support the video tag.
+            </video>
+            {/* Overlay for readability */}
+            <div className="absolute inset-0 bg-white opacity-80 z-10"></div>
+
+            {/* Content */}
+            <div className="relative z-20">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Farm Dashboard</h2>
+              {isFarmRegistered ? (
+                <>
+                  <p className="text-lg text-gray-700 mb-2">{getGreeting()}, <span className="font-semibold">{farmName}</span>!</p>
+                  <p className="text-md text-gray-600 mb-2">Acreage: <span className="font-medium">{farmSize} acres</span></p>
+                  <p className="text-md text-gray-600 mb-4">Farming Type(s): <span className="font-medium">{farmingTypes.join(', ')}</span>
+                    {Object.keys(selectedFarmingInfo).length > 0 && (
+                      <span className="ml-2">
+                        ({Object.entries(selectedFarmingInfo).map(([type, infos]) =>
+                          infos.length > 0 ? `${type}: ${infos.join(', ')}` : ''
+                        ).filter(Boolean).join('; ')})
+                      </span>
+                    )}
+                  </p>
+
+                  {isPartitioned && (
+                    <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <h3 className="text-xl font-semibold text-gray-800 mb-2">Farm Partitions:</h3>
+                      {partitionDetails.length > 0 ? (
+                        <ul className="list-disc list-inside text-gray-700">
+                          {partitionDetails.map((p, index) => (
+                            <li key={index}>
+                              <strong>{p.name || `Partition ${index + 1}`}:</strong> {p.content || 'N/A'}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-gray-600 italic">No partition details provided.</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Weather Card */}
+                    <div className="bg-blue-50 p-4 rounded-lg shadow-sm border border-blue-200">
+                      <h3 className="text-xl font-semibold text-blue-800 mb-2">Current Weather</h3>
+                      <p className="text-gray-700">Location: {mockWeatherData.location}</p>
+                      <p className="text-gray-700">Temperature: {mockWeatherData.temperature}</p>
+                      <p className="text-700">Condition: {mockWeatherData.condition}</p>
+                      <p className="text-gray-700">Humidity: {mockWeatherData.humidity}</p>
+                      <p className="text-gray-700">Wind: {mockWeatherData.wind}</p>
+                      <h4 className="font-semibold mt-3 mb-1">Forecast:</h4>
+                      <ul className="list-disc list-inside text-gray-700">
+                        {mockWeatherData.forecast.map((item, index) => (
+                          <li key={index}>{item.day}: {item.temp}, {item.condition}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Crop Health Card */}
+                    <div className="bg-green-50 p-4 rounded-lg shadow-sm border border-green-200">
+                      <h3 className="text-xl font-semibold text-green-800 mb-2">Crop Health Overview</h3>
+                      {mockCropHealthData.map((crop, index) => (
+                        <div key={index} className="mb-3 pb-2 border-b border-green-100 last:border-b-0">
+                          <p className="font-medium text-gray-800">{crop.crop}: <span className={crop.status === 'Healthy' ? 'text-green-600' : 'text-yellow-600'}>{crop.status}</span></p>
+                          <p className="text-sm text-gray-600">Cost Incurred: {crop.costIncurred}</p>
+                          <p className="text-sm text-gray-600">Expected Further Cost: {crop.expectedFurtherCost}</p>
+                          <p className="text-sm text-gray-600">Crop Duration: {crop.cropDuration}</p>
+                          <p className="text-sm text-gray-600">Current Phase: {crop.currentPhase}</p>
+                          <p className="text-sm text-gray-600">{crop.notes}</p>
+                        </div>
+                      ))}
+                      <button className="mt-4 w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300">View Detailed Crop Health</button>
+                    </div>
+
+                    {/* Market Trends Card */}
+                    <div className="bg-yellow-50 p-4 rounded-lg shadow-sm border border-yellow-200">
+                      <h3 className="text-xl font-semibold text-yellow-800 mb-2">Market Trends</h3>
+                      {mockMarketTrends.map((item, index) => (
+                        <div key={index} className="mb-3 pb-2 border-b border-yellow-100 last:border-b-0">
+                          <p className="font-medium text-gray-800">{item.commodity}: <span className={item.trend === 'up' ? 'text-green-600' : item.trend === 'down' ? 'text-red-600' : 'text-gray-600'}>{item.price} ({item.trend})</span></p>
+                        </div>
+                      ))}
+                      <button className="mt-4 w-full bg-yellow-600 text-white py-2 px-4 rounded-md hover:bg-yellow-700 transition duration-300">Explore Market Insights</button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-10">
+                  <p className="text-lg text-gray-600 mb-4">Please register your farm to access the dashboard features.</p>
+                  <button
+                    onClick={() => { setActiveTab('register'); setRegistrationStep(1); }}
+                    className="bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 transition duration-300 shadow-lg"
+                  >
+                    Register Farm
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      case 'register':
+        return (
+          <div className="p-6 bg-white rounded-lg shadow-md max-w-md mx-auto">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Farm Registration - Step {registrationStep}</h2>
+            {registrationStep === 1 && (
+              <form onSubmit={handleFarmRegistrationStep1}>
+                <div className="mb-4">
+                  <label htmlFor="farmName" className="block text-gray-700 text-sm font-bold mb-2">Farm Name:</label>
+                  <input
+                    type="text"
+                    id="farmName"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                    placeholder="e.g., Green Valley Farm"
+                    value={farmName}
+                    onChange={(e) => setFarmName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="mb-4">
+                  <label htmlFor="farmSize" className="block text-gray-700 text-sm font-bold mb-2">Farm Size (Acres):</label>
+                  <input
+                    type="number"
+                    id="farmSize"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                    placeholder="e.g., 10"
+                    min="0"
+                    value={farmSize}
+                    onChange={(e) => setFarmSize(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="mb-4">
+                  <label htmlFor="farmLocation" className="block text-gray-700 text-sm font-bold mb-2">Location:</label>
+                  <input
+                    type="text"
+                    id="farmLocation"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                    placeholder="e.g., Nakuru County"
+                    value={farmLocation}
+                    onChange={(e) => setFarmLocation(e.target.value)}
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition duration-300 w-full shadow-lg"
+                >
+                  Next: Select Farming Type(s)
+                </button>
+              </form>
+            )}
+
+            {registrationStep === 2 && (
+              <div>
+                <p className="text-gray-700 mb-4">Please select the primary type(s) of farming you engage in:</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                  {allFarmingTypes.map((type) => (
+                    <label key={type} className="flex items-center space-x-2 cursor-pointer bg-blue-50 p-3 rounded-md hover:bg-blue-100 transition duration-200">
+                      <input
+                        type="checkbox"
+                        className="form-checkbox h-5 w-5 text-blue-600 rounded"
+                        checked={farmingTypes.includes(type)}
+                        onChange={() => handleFarmingTypeChange(type)}
+                      />
+                      <span className="text-gray-800 font-medium">{type}</span>
+                    </label>
+                  ))}
+                </div>
+
+                {farmingTypes.map(type => farmingTypeInfo[type] && farmingTypeInfo[type].length > 0 && (
+                  <div key={type} className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-md">
+                    <label htmlFor={`details-${type}`} className="block text-gray-700 mb-2 font-semibold">
+                      More specific info for <span className="text-blue-700">{type}</span>:
+                    </label>
+                    <select
+                      id={`details-${type}`}
+                      multiple
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-green-500 h-32"
+                      value={selectedFarmingInfo[type] || []}
+                      onChange={(e) => handleDetailedFarmingInfoChange(type, e)}
+                    >
+                      {farmingTypeInfo[type].map(info => (
+                        <option key={info} value={info}>{info}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select multiple options.</p>
+                  </div>
+                ))}
+
+                <div className="flex justify-between mt-6">
+                  <button
+                    onClick={() => setRegistrationStep(1)}
+                    className="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400 transition duration-300 shadow-lg"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleFarmingTypeNext}
+                    className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition duration-300 shadow-lg"
+                    disabled={farmingTypes.length === 0} // Disable if no farming type selected
+                  >
+                    Next: Farm Partitions
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {registrationStep === 3 && (
+              <div>
+                <div className="mb-4">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-5 w-5 text-blue-600 rounded"
+                      checked={isPartitioned}
+                      onChange={(e) => {
+                        setIsPartitioned(e.target.checked);
+                        if (!e.target.checked) {
+                          setNumPartitions(0);
+                          setPartitionDetails([]);
+                        }
+                      }}
+                    />
+                    <span className="text-gray-700 font-bold">Is your farm partitioned?</span>
+                  </label>
+                </div>
+
+                {isPartitioned && (
+                  <div className="mb-4">
+                    <label htmlFor="numPartitions" className="block text-gray-700 text-sm font-bold mb-2">Number of Partitions:</label>
+                    <input
+                      type="number"
+                      id="numPartitions"
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500"
+                      min="0"
+                      value={numPartitions}
+                      onChange={(e) => {
+                        const count = parseInt(e.target.value);
+                        setNumPartitions(isNaN(count) ? 0 : count);
+                        setPartitionDetails(Array(isNaN(count) ? 0 : count).fill({ name: '', content: '' }));
+                      }}
+                    />
+                  </div>
+                )}
+
+                {isPartitioned && numPartitions > 0 && (
+                  <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-md">
+                    <h3 className="text-xl font-semibold text-gray-800 mb-3">Partition Details:</h3>
+                    {Array.from({ length: numPartitions }).map((_, index) => (
+                      <div key={index} className="mb-4 p-3 border border-gray-300 rounded-md bg-white">
+                        <h4 className="font-semibold text-gray-700 mb-2">Partition {index + 1}</h4>
+                        <div className="mb-2">
+                          <label htmlFor={`partitionName-${index}`} className="block text-gray-700 text-sm">Name (e.g., North Field):</label>
+                          <input
+                            type="text"
+                            id={`partitionName-${index}`}
+                            className="shadow appearance-none border rounded w-full py-1.5 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            value={partitionDetails[index]?.name || ''}
+                            onChange={(e) => handlePartitionDetailChange(index, 'name', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor={`partitionContent-${index}`} className="block text-gray-700 text-sm">Content (e.g., Maize, Dairy Cows):</label>
+                          <input
+                            type="text"
+                            id={`partitionContent-${index}`}
+                            className="shadow appearance-none border rounded w-full py-1.5 px-2 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            value={partitionDetails[index]?.content || ''}
+                            onChange={(e) => handlePartitionDetailChange(index, 'content', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex justify-between mt-6">
+                  <button
+                    onClick={() => setRegistrationStep(2)}
+                    className="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400 transition duration-300 shadow-lg"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleCompleteRegistration}
+                    className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition duration-300 shadow-lg"
+                  >
+                    Complete Registration
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      case 'map':
+        return (
+          <div className="p-6 bg-white rounded-lg shadow-md">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Farm Mapping & Analytics</h2>
+            {isFarmRegistered ? (
+              <div className="relative bg-gray-200 h-96 flex items-center justify-center rounded-lg text-gray-600 text-xl overflow-hidden">
+                <canvas ref={canvasRef} className="w-full h-full"></canvas>
+                <p className="absolute top-4 left-4 text-sm text-gray-700">Visualizing farm zones based on soil properties and crop health (NDVI).</p>
+              </div>
+            ) : (
+              <div className="text-center py-10">
+                <p className="text-lg text-gray-600 mb-4">Please register your farm to view the farm map.</p>
+                <button
+                  onClick={() => { setActiveTab('register'); setRegistrationStep(1); }}
+                  className="bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 transition duration-300 shadow-lg"
+                >
+                  Register Farm
+                </button>
+              </div>
+            )}
+            <p className="mt-4 text-gray-700">This section will display your farm boundaries, satellite imagery, and various analytical layers (e.g., NDVI, soil moisture, pH levels).</p>
+            <button className="mt-4 bg-purple-500 text-white py-2 px-4 rounded-md hover:bg-purple-600 transition duration-300">Upload Farm KML/Shapefile</button>
+          </div>
+        );
+      case 'advisory':
+        return (
+          <div className="p-6 bg-white rounded-lg shadow-md">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Advisory & Recommendations</h2>
+            <p className="text-gray-700 mb-4">Get personalized advice on irrigation, fertilization, pest control, and optimal planting/harvesting times based on your farm's data.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-teal-50 p-4 rounded-lg shadow-sm border border-teal-200">
+                <h3 className="text-xl font-semibold text-teal-800 mb-2">Irrigation Advisor</h3>
+                <p className="text-gray-700">Current recommendation: Light irrigation needed for Beans, Maize is well-hydrated.</p>
+                <button className="mt-3 bg-teal-600 text-white py-1.5 px-3 rounded-md hover:bg-teal-700 transition duration-300 text-sm">View Details</button>
+              </div>
+              <div className="bg-orange-50 p-4 rounded-lg shadow-sm border border-orange-200">
+                <h3 className="text-xl font-semibold text-orange-800 mb-2">Pest & Disease Alerts</h3>
+                <p className="text-gray-700">No active pest alerts for your farm. Monitor for early blight in Tomatoes.</p>
+                <button className="mt-3 bg-orange-600 text-white py-1.5 px-3 rounded-md hover:bg-orange-700 transition duration-300 text-sm">Report a Problem</button>
+              </div>
+            </div>
+          </div>
+        );
+      case 'satellite-data':
+        return (
+          <div className="p-6 bg-white rounded-lg shadow-md">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Satellite Imagery Data</h2>
+            <p className="text-gray-700 mb-4">Here's a summary of recent data collected and processed from satellite imagery for your farm:</p>
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
+                <thead>
+                  <tr className="bg-gray-100 border-b border-gray-200">
+                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Soil Type</th>
+                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Composition</th>
+                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Moisture</th>
+                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">pH</th>
+                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">N</th>
+                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">P</th>
+                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">K</th>
+                    <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Vegetation Index</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mockSatelliteData.map((data, index) => (
+                    <tr key={index} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
+                      <td className="py-3 px-4 text-sm text-gray-800">{data.date}</td>
+                      <td className="py-3 px-4 text-sm text-gray-800">{data.soilType}</td>
+                      <td className="py-3 px-4 text-sm text-gray-800">{data.soilComposition}</td>
+                      <td className="py-3 px-4 text-sm text-gray-800">{data.moistureLevel}</td>
+                      <td className="py-3 px-4 text-sm text-gray-800">{data.pH}</td>
+                      <td className="py-3 px-4 text-sm text-gray-800">{data.nitrogen}</td>
+                      <td className="py-3 px-4 text-sm text-gray-800">{data.phosphorus}</td>
+                      <td className="py-3 px-4 text-sm text-gray-800">{data.potassium}</td>
+                      <td className="py-3 px-4 text-sm text-gray-800">{data.vegetationIndex}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-4 text-gray-600 text-sm italic">Note: Data is illustrative and would be dynamically loaded from satellite sources in a real application.</p>
+          </div>
+        );
+      case 'farm-analysis':
+        return (
+          <div className="p-6 bg-white rounded-lg shadow-md">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Farm Analysis Tools</h2>
+
+            {/* Satellite-Derived Farm Analytics */}
+            <div className="mb-8 bg-indigo-50 p-4 rounded-lg shadow-sm border border-indigo-200">
+              <h3 className="text-xl font-semibold text-indigo-800 mb-3">Satellite-Derived Farm Analytics</h3>
+              <p className="text-gray-700 mb-3">Access various indices calculations and scanning results from satellite imagery for deeper insights into your farm's health and performance.</p>
+              <div className="overflow-x-auto">
+                <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
+                  <thead>
+                    <tr className="bg-gray-100 border-b border-gray-200">
+                      <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Metric</th>
+                      <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Value</th>
+                      <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Details</th>
+                      <th className="py-3 px-4 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Actionable Insight</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mockFarmAnalyticsData.map((data, index) => (
+                      <tr key={index} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
+                        <td className="py-3 px-4 text-sm text-gray-800">{data.metric}</td>
+                        <td className="py-3 px-4 text-sm text-gray-800">{data.value}</td>
+                        <td className="py-3 px-4 text-sm text-gray-800">{data.details}</td>
+                        <td className="py-3 px-4 text-sm text-gray-800">{data.action}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-4 text-gray-600 text-sm italic">Note: This data represents various satellite-derived analyses. In a live system, these would be interactive maps and detailed reports.</p>
+            </div>
+
+            {/* Profitability Estimator */}
+            <div className="mb-8 bg-pink-50 p-4 rounded-lg shadow-sm border border-pink-200">
+              <h3 className="text-xl font-semibold text-pink-800 mb-3">Profitability Estimator</h3>
+              <p className="text-gray-700 mb-3">Calculate estimated profit based on projected yield and market price.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label htmlFor="profitProjectedYield" className="block text-gray-700 text-sm font-bold mb-2">Projected Yield (units):</label>
+                  <input
+                    type="number"
+                    id="profitProjectedYield"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-pink-500"
+                    placeholder="e.g., 50 (bags/acre)"
+                    min="0"
+                    value={profitProjectedYield}
+                    onChange={(e) => setProfitProjectedYield(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="profitMarketPrice" className="block text-gray-700 text-sm font-bold mb-2">Expected Market Price (Ksh/unit):</label>
+                  <input
+                    type="number"
+                    id="profitMarketPrice"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-pink-500"
+                    placeholder="e.g., 3000 (Ksh/bag)"
+                    min="0"
+                    value={profitMarketPrice}
+                    onChange={(e) => setProfitMarketPrice(e.target.value)}
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleCalculateProfitability}
+                className="bg-pink-600 text-white py-2 px-4 rounded-md hover:bg-pink-700 transition duration-300 w-full md:w-auto"
+              >
+                Calculate Profit
+              </button>
+              {profitResult && (
+                <div className="mt-4 p-3 bg-pink-100 border border-pink-300 rounded-md text-gray-800 whitespace-pre-wrap">
+                  <h4 className="font-semibold mb-2">Estimated Profitability:</h4>
+                  {profitResult}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      case 'ai-tools':
+        return (
+          <div className="p-6 bg-white rounded-lg shadow-md">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">AI-Powered Tools</h2>
+
+            {/* Proposed Farming & Cost Comparison Card */}
+            <div className="mb-8 bg-red-50 p-4 rounded-lg shadow-sm border border-red-200">
+              <h3 className="text-xl font-semibold text-red-800 mb-2">Proposed Farming Type & Cost Analysis ✨</h3>
+              <p className="text-gray-700 mb-3">Get AI-driven recommendations for optimal farming types and a cost comparison based on your farm's conditions and satellite data, weather, and market trends.</p>
+              <button
+                onClick={handleGenerateProposedFarmingAdvice}
+                className="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition duration-300 w-full md:w-auto"
+                disabled={isProposedAdviceLoading}
+              >
+                {isProposedAdviceLoading ? 'Generating Advice...' : 'Get Proposed Farming Advice'}
+              </button>
+              {proposedFarmingAdvice && (
+                <div className="mt-4 p-3 bg-red-100 border border-red-300 rounded-md text-gray-800 whitespace-pre-wrap">
+                  <h4 className="font-semibold mb-2">Recommendation:</h4>
+                  {proposedFarmingAdvice}
+                </div>
+              )}
+            </div>
+
+            {/* Yield Projection Tool */}
+            <div className="mb-8 bg-indigo-50 p-4 rounded-lg shadow-sm border border-indigo-200">
+              <h3 className="text-xl font-semibold text-indigo-800 mb-3">Yield Projection Tool ✨</h3>
+              <p className="text-gray-700 mb-3">Estimate your crop yield based on various factors using AI.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label htmlFor="yieldCropType" className="block text-gray-700 text-sm font-bold mb-2">Crop Type:</label>
+                  <input
+                    type="text"
+                    id="yieldCropType"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-indigo-500"
+                    placeholder="e.g., Maize"
+                    value={yieldCropType}
+                    onChange={(e) => setYieldCropType(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="yieldPlantingDate" className="block text-gray-700 text-sm font-bold mb-2">Planting Date:</label>
+                  <input
+                    type="date"
+                    id="yieldPlantingDate"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-indigo-500"
+                    value={yieldPlantingDate}
+                    onChange={(e) => setYieldPlantingDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="yieldExpectedRainfall" className="block text-gray-700 text-sm font-bold mb-2">Expected Rainfall (mm/month):</label>
+                  <input
+                    type="number"
+                    id="yieldExpectedRainfall"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-indigo-500"
+                    placeholder="e.g., 150"
+                    min="0"
+                    value={yieldExpectedRainfall}
+                    onChange={(e) => setYieldExpectedRainfall(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="yieldFertilizerUse" className="block text-gray-700 text-sm font-bold mb-2">Fertilizer Use:</label>
+                  <input
+                    type="text"
+                    id="yieldFertilizerUse"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-indigo-500"
+                    placeholder="e.g., NPK 23:23:0, 50kg/acre"
+                    value={yieldFertilizerUse}
+                    onChange={(e) => setYieldFertilizerUse(e.target.value)}
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleGenerateYieldProjection}
+                className="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300 w-full md:w-auto"
+                disabled={isYieldProjectionLoading}
+              >
+                {isYieldProjectionLoading ? 'Generating Projection...' : 'Get Yield Projection'}
+              </button>
+              {yieldProjectionResult && (
+                <div className="mt-4 p-3 bg-indigo-100 border border-indigo-300 rounded-md text-gray-800 whitespace-pre-wrap">
+                  <h4 className="font-semibold mb-2">Projected Yield:</h4>
+                  {yieldProjectionResult}
+                </div>
+              )}
+            </div>
+
+            {/* Crop Recommendation */}
+            <div className="mb-8 bg-blue-50 p-4 rounded-lg shadow-sm border border-blue-200">
+              <h3 className="text-xl font-semibold text-blue-800 mb-3">Crop Recommendation ✨</h3>
+              <p className="text-gray-700 mb-3">Describe your farm's characteristics to get crop suggestions.</p>
+              <textarea
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500 mb-3 resize-y"
+                rows="3"
+                placeholder="e.g., 'My farm has sandy soil, gets moderate rainfall, and is located in a hot climate. I have 2 acres available.'"
+                value={cropRecPrompt}
+                onChange={(e) => setCropRecPrompt(e.target.value)}
+              ></textarea>
+              <button
+                onClick={handleGenerateCropRecommendation}
+                className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 w-full md:w-auto"
+                disabled={isCropRecLoading}
+              >
+                {isCropRecLoading ? 'Generating...' : 'Get Crop Recommendations'}
+              </button>
+              {cropRecResponse && (
+                <div className="mt-4 p-3 bg-blue-100 border border-blue-300 rounded-md text-gray-800 whitespace-pre-wrap">
+                  <h4 className="font-semibold mb-2">Suggested Crops:</h4>
+                  {cropRecResponse}
+                </div>
+              )}
+            </div>
+
+            {/* Soil Nutrient Deficiency Advisor */}
+            <div className="mb-8 bg-purple-50 p-4 rounded-lg shadow-sm border border-purple-200">
+              <h3 className="text-xl font-semibold text-purple-800 mb-3">Soil Nutrient Deficiency Advisor ✨</h3>
+              <p className="text-700 mb-3">Describe your crop's symptoms (e.g., discolored leaves, stunted growth) to get potential soil nutrient deficiency advice.</p>
+              <textarea
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:border-purple-500 mb-3 resize-y"
+                rows="3"
+                placeholder="e.g., 'My maize leaves are turning yellow from the tips inwards, and growth is stunted.'"
+                value={soilSymptoms}
+                onChange={(e) => setSoilSymptoms(e.target.value)}
+              ></textarea>
+              <button
+                onClick={handleGetSoilAdvice}
+                className="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition duration-300 w-full md:w-auto"
+                disabled={isSoilAdviceLoading}
+              >
+                {isSoilAdviceLoading ? 'Getting Advice...' : 'Get Soil Advice'}
+              </button>
+              {soilAdvice && (
+                <div className="mt-4 p-3 bg-purple-100 border border-purple-300 rounded-md text-gray-800 whitespace-pre-wrap">
+                  <h4 className="font-semibold mb-2">Potential Issues & Remedies:</h4>
+                  {soilAdvice}
+                </div>
+              )}
+            </div>
+
+            {/* Farm Report Summarizer */}
+            <div className="mb-8 bg-yellow-50 p-4 rounded-lg shadow-sm border border-yellow-200">
+              <h3 className="text-xl font-semibold text-yellow-800 mb-3">Farm Report Summarizer ✨</h3>
+              <p className="text-gray-700 mb-3">Paste a farm report or any detailed text about your farm, and get a concise summary with actionable insights.</p>
+              <textarea
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:border-yellow-500 mb-3 resize-y"
+                rows="5"
+                placeholder="Paste your farm report text here..."
+                value={farmReportInput}
+                onChange={(e) => setFarmReportInput(e.target.value)}
+              ></textarea>
+              <button
+                onClick={handleSummarizeFarmReport}
+                className="bg-yellow-600 text-white py-2 px-4 rounded-md hover:bg-yellow-700 transition duration-300 w-full md:w-auto"
+                disabled={isFarmReportSummarizing}
+              >
+                {isFarmReportSummarizing ? 'Summarizing...' : 'Summarize Report'}
+              </button>
+              {farmReportSummary && (
+                <div className="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded-md text-gray-800 whitespace-pre-wrap">
+                  <h4 className="font-semibold mb-2">Summary & Insights:</h4>
+                  {farmReportSummary}
+                </div>
+              )}
+            </div>
+
+            {/* Agronomic Q&A Chatbot */}
+            <div className="bg-green-50 p-4 rounded-lg shadow-sm border border-green-200">
+              <h3 className="text-xl font-semibold text-green-800 mb-3">Agronomic Q&A Chatbot ✨</h3>
+              <div className="h-64 overflow-y-auto border border-gray-300 rounded-md p-3 mb-3 bg-white">
+                {chatHistory.length === 0 && (
+                  <p className="text-gray-500 text-center italic">Ask me anything about farming!</p>
+                )}
+                {chatHistory.map((msg, index) => (
+                  <div key={index} className={`mb-2 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                    <span className={`inline-block p-2 rounded-lg ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-800'}`}>
+                      {msg.text}
+                    </span>
+                  </div>
+                ))}
+                {isChatLoading && (
+                  <div className="text-center text-gray-500 italic">Typing...</div>
+                )}
+              </div>
+              <form onSubmit={handleChatSubmit} className="flex">
+                <input
+                  type="text"
+                  className="flex-grow p-3 border border-gray-300 rounded-l-md focus:outline-none focus:border-green-500"
+                  placeholder="Ask a farming question..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  disabled={isChatLoading}
+                />
+                <button
+                  type="submit"
+                  className="bg-green-600 text-white py-2 px-4 rounded-r-md hover:bg-green-700 transition duration-300"
+                  disabled={isChatLoading}
+                >
+                  Send
+                </button>
+              </form>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    // Tailwind CSS setup
+    <div className="min-h-screen bg-gray-100 font-inter antialiased">
+      <script src="https://cdn.tailwindcss.com"></script>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+      <style>
+        {`
+        body {
+          font-family: 'Inter', sans-serif;
+        }
+        .tab-button {
+          @apply px-4 py-2 rounded-md transition-colors duration-300;
+        }
+        .tab-button.active {
+          @apply bg-blue-600 text-white shadow-md;
+        }
+        .tab-button:not(.active):hover {
+          @apply bg-blue-100 text-blue-800;
+        }
+        canvas {
+          background-color: #f8f8f8;
+          border-radius: 0.5rem;
+        }
+        `}
+      </style>
+
+      {/* Header */}
+      <header className="bg-gradient-to-r from-green-700 to-blue-700 text-white p-4 shadow-lg">
+        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center">
+          <h1 className="text-3xl font-bold mb-2 md:mb-0">AgriIntel</h1>
+          <nav className="flex space-x-2 md:space-x-4">
+            <button
+              className={`tab-button ${activeTab === 'dashboard' ? 'active' : 'text-white'}`}
+              onClick={() => setActiveTab('dashboard')}
+            >
+              Dashboard
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'map' ? 'active' : 'text-white'}`}
+              onClick={() => setActiveTab('map')}
+            >
+              Farm Map
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'advisory' ? 'active' : 'text-white'}`}
+              onClick={() => setActiveTab('advisory')}
+            >
+              Advisory
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'satellite-data' ? 'active' : 'text-white'}`}
+              onClick={() => setActiveTab('satellite-data')}
+            >
+              Satellite Data
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'farm-analysis' ? 'active' : 'text-white'}`}
+              onClick={() => setActiveTab('farm-analysis')}
+            >
+              Farm Analysis
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'ai-tools' ? 'active' : 'text-white'}`}
+              onClick={() => setActiveTab('ai-tools')}
+            >
+              AI Tools
+            </button>
+            {!isFarmRegistered && (
+              <button
+                className={`tab-button ${activeTab === 'register' ? 'active' : 'text-white'}`}
+                onClick={() => { setActiveTab('register'); setRegistrationStep(1); }}
+              >
+                Register Farm
+              </button>
+            )}
+          </nav>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="container mx-auto p-4 mt-6">
+        {renderContent()}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-gray-800 text-white text-center p-4 mt-8">
+        <p>&copy; 2025 AgriIntel. All rights reserved. Empowering farmers with data-driven insights.</p>
+      </footer>
+    </div>
+  );
+}
+
+export default App;
